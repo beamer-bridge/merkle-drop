@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import "./ERC20Interface.sol";
+import "./openzeppelin/IERC20.sol";
 
 contract MerkleDrop {
 
     bytes32 public root;
-    ERC20Interface public droppedToken;
+    IERC20 public droppedToken;
     address public treasuryAddress;
     uint public airdropExpiresAt;
 
@@ -15,7 +15,7 @@ contract MerkleDrop {
 
     event Withdraw(address recipient, uint value);
 
-    constructor(ERC20Interface _droppedToken, bytes32 _root, address _treasuryAddress, uint _airdropExpiresAt) public {
+    constructor(IERC20 _droppedToken, bytes32 _root, address _treasuryAddress, uint _airdropExpiresAt) {
         droppedToken = _droppedToken;
         root = _root;
         treasuryAddress = _treasuryAddress;

@@ -146,10 +146,11 @@ def dropped_token_contract(
             "droppedToken",
             "DTN",
             18,
-            premint_token_owner,
-            premint_token_value + premint_token_small_value,
+            100_000_000_000_000_000_000_000_000,
         ),
     )
+
+    contract.functions.unpause()
 
     return contract
 
