@@ -1,0 +1,18 @@
+click
+web3
+contract-deploy-tools
+eth_utils
+flask
+flask_cors
+pendulum
+gunicorn
+
+# development dependencies
+pytest
+pytest-cov
+mypy
+flake8
+pep8-naming
+black
+pre-commit
+isort

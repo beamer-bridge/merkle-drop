@@ -1,0 +1,222 @@
+version: 2.1
+
+templates:
+  tagged-filter: &tagged-filter
+    tags:
+      only: /[0-9]+(\.[0-9]+)*/
+
+executors:
+  ubuntu-builder:
+    machine:
+      image: ubuntu-2204:2023.02.1
+      docker_layer_caching: true
+    working_directory: ~/repo
+
+# define some common commands
+# see https://circleci.com/docs/2.0/configuration-reference/#commands-requires-version-21
+commands:
+  create-venv:
+    description: "Create venv"
+    steps:
+      - run:
+          name: Create python venv
+          command: |
+            python3.8 -m venv venv
+            venv/bin/pip install -c constraints.txt pip wheel setuptools
+
+  config-path:
+    description: "set environment variables and change PATH"
+    steps:
+    - run:
+        name: Configuring PATH
+        command: |
+          echo 'export PATH=~/bin:~/opt/node/bin:~/repo/venv/bin:~/.cargo/bin:${PATH}; . ~/.nvm/nvm.sh' >> ${BASH_ENV}
+
+jobs:
+  run-flake8:
+    executor: ubuntu-builder
+    steps:
+      - attach_workspace:
+          at: '~'
+      - config-path
+      - run:
+          name: Run flake8
+          command: |
+            flake8 src tests
+
+  run-black:
+    executor: ubuntu-builder
+    steps:
+      - attach_workspace:
+          at: '~'
+      - config-path
+      - run:
+          name: Run black
+          command: |
+            black --check src tests
+
+  run-solium:
+    executor: ubuntu-builder
+    steps:
+      - checkout
+      - config-path
+      - run:
+          name: Install ethlint (=solium)
+          command: |
+            npm install -g 'ethlint@>=1.0.9'
+      - run:
+          name: Run solium
+          command: |
+            cd contracts
+            solium --dir contracts
+  install:
+    executor: ubuntu-builder
+    steps:
+      - checkout
+      - config-path
+      - restore_cache:
+          key: venv-{{ checksum "constraints.txt" }}-{{ checksum "requirements.txt" }}
+      - create-venv
+      - run:
+          name: Install codecov
+          command: |
+            pip install -c constraints.txt codecov
+      - run:
+          name: Install requirements
+          command: |
+            make install-requirements
+      - save_cache:
+          key: venv-{{ checksum "constraints.txt" }}-{{ checksum "requirements.txt" }}
+          paths:
+            - venv
+      - run:
+          name: Install package
+          command: |
+            make compile
+            pip install -c constraints.txt .
+      - run:
+          name: Verify installed packages have compatible dependencies
+          command: |
+            pip check
+      - run:
+          name: Build sdist and wheel
+          command: |
+            make compile
+            python setup.py sdist
+            python setup.py bdist_wheel
+      - persist_to_workspace:
+          root: "~"
+          paths:
+            - repo
+
+  install-py39:
+    executor: ubuntu-builder
+    steps:
+      - checkout
+      - config-path
+      - create-venv
+      - run:
+          name: Install with python 3.9
+          command: |
+            pip install tox
+            tox -vv -e py39
+
+  run-pytest:
+    executor: ubuntu-builder
+    steps:
+      - attach_workspace:
+          at: '~'
+      - config-path
+      - run:
+          name: Create test-reports folder
+          command: mkdir test-reports
+      - run:
+          name: Run pytest
+          command: pytest --cov merkle_drop --junitxml=test-reports/junit.xml tests/
+      - run:
+          name: Upload coverage report
+          command: codecov
+      - store_test_results:
+          path: test-reports
+
+  run-mypy:
+    executor: ubuntu-builder
+    steps:
+      - attach_workspace:
+          at: '~'
+      - config-path
+      - run:
+          name: Run mypy
+          command: |
+            mypy --ignore-missing-imports src tests
+
+  check-dist:
+    executor: ubuntu-builder
+    steps:
+      - attach_workspace:
+          at: '~'
+      - config-path
+      - run:
+          name: Twine check
+          command: |
+            twine check dist/*
+
+  upload-pypi:
+    executor: ubuntu-builder
+    steps:
+      - attach_workspace:
+          at: '~'
+      - config-path
+      - run:
+          name: Init .pypirc
+          command: |
+            echo -e "[pypi]" >> ~/.pypirc
+            echo -e "username = $PYPI_USER" >> ~/.pypirc
+            echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
+      - run:
+          name: Upload to pypi
+          command: |
+            twine upload dist/*
+
+workflows:
+  version: 2
+  default:
+    jobs:
+      - install:
+          filters:
+            <<: *tagged-filter
+      - install-py39:
+          filters:
+            <<: *tagged-filter
+      - run-flake8:
+          filters:
+            <<: *tagged-filter
+          requires:
+            - install
+      - run-black:
+          filters:
+            <<: *tagged-filter
+          requires:
+            - install
+      - run-pytest:
+          filters:
+            <<: *tagged-filter
+          requires:
+            - install
+      - run-mypy:
+          filters:
+            <<: *tagged-filter
+          requires:
+            - install
+      - upload-pypi:
+          context: pypi-credentials
+          requires:
+            - run-flake8
+            - run-black
+            - run-pytest
+            - run-mypy
+            - install
+          filters:
+            <<: *tagged-filter
+            branches:
+              ignore: /.*/
