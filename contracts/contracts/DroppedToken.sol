@@ -12,7 +12,7 @@ contract DroppedToken is ERC20Capped, Pausable, Ownable {
 
     uint8 private _decimals;
 
-    mapping(address => bool) private allowedTransferee; // whitelisted addresses for token distribution.
+    mapping(address => bool) public allowedTransferee; // whitelisted addresses for token distribution.
 
     // the amount that a deployer of this account should receive
     // when tokens get minted

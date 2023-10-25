@@ -159,7 +159,7 @@ def dropped_token_contract(
     contract.functions.initialize(treasury_address, new_owner).transact()
     contract.functions.allowTransferee(new_owner).transact()
 
-    contract.functions.unpause().transact()
+    # contract.functions.unpause().transact()
 
     return contract
 
@@ -197,8 +197,7 @@ def merkle_drop_contract(
         ),
     )
 
-    print("dropped token ocntrac owner", dropped_token_contract.functions.balanceOf(premint_token_owner).call())
-    print("dropped token ocntrac owner", dropped_token_contract.functions.owner().call())
+    dropped_token_contract.functions.allowTransferee(contract.address).transact()
 
     dropped_token_contract.functions.transfer(
         contract.address, fund_merkle_drop_amount
