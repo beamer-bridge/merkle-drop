@@ -119,13 +119,17 @@ def treasury_address():
 
 @pytest.fixture(scope="session")
 def premint_token_owner(accounts):
+    print("premint toiken owner", accounts[0])
     return accounts[0]
 
 
 @pytest.fixture(scope="session")
-def premint_token_value():
-    # The returned value should be equal to the dropped value: see values in `tree_data`
-    return 15_000_000
+def cap():
+    return 100_000_000 * 10 ** 18
+
+@pytest.fixture(scope="session")
+def fund_merkle_drop_amount():
+    return 50_000_000 * 10 ** 18
 
 
 @pytest.fixture(scope="session")
@@ -136,7 +140,7 @@ def premint_token_small_value():
 
 @pytest.fixture(scope="session")
 def dropped_token_contract(
-    deploy_contract, premint_token_owner, premint_token_value, premint_token_small_value
+    deploy_contract, premint_token_owner, cap, premint_token_small_value
 ):
     # A token contract with premint token for the merkle drop.
     # The tokens are transferred to the MerkleDrop upon deployment of MerkleDrop.
@@ -146,11 +150,16 @@ def dropped_token_contract(
             "droppedToken",
             "DTN",
             18,
-            100_000_000_000_000_000_000_000_000,
+            cap,
         ),
     )
 
-    contract.functions.unpause()
+    new_owner = treasury_address = contract.functions.owner().call()
+
+    contract.functions.initialize(treasury_address, new_owner).transact()
+    contract.functions.allowTransferee(new_owner).transact()
+
+    contract.functions.unpause().transact()
 
     return contract
 
@@ -173,7 +182,7 @@ def merkle_drop_contract(
     root_hash_for_tree_data,
     dropped_token_contract,
     premint_token_owner,
-    premint_token_value,
+    fund_merkle_drop_amount,
     treasury_address,
     airdrop_expires_at,
 ):
@@ -188,12 +197,15 @@ def merkle_drop_contract(
         ),
     )
 
+    print("dropped token ocntrac owner", dropped_token_contract.functions.balanceOf(premint_token_owner).call())
+    print("dropped token ocntrac owner", dropped_token_contract.functions.owner().call())
+
     dropped_token_contract.functions.transfer(
-        contract.address, premint_token_value
+        contract.address, fund_merkle_drop_amount
     ).transact({"from": premint_token_owner})
     assert (
         dropped_token_contract.functions.balanceOf(contract.address).call()
-        == premint_token_value
+        == fund_merkle_drop_amount
     )
 
     return contract

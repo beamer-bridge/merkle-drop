@@ -12,7 +12,7 @@ def get_merkle_drop_status(web3, contract_address):
 
     token_contract = web3.eth.contract(
         address=merkle_drop_contract.functions.droppedToken().call(),
-        abi=compiled_contracts["ERC20Interface"]["abi"],
+        abi=compiled_contracts["ERC20"]["abi"],
     )
 
     return {

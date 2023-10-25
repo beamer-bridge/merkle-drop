@@ -60,10 +60,10 @@ def airdrop_data(tree_data):
 
 
 @pytest.fixture()
-def token_contract(premint_token_value):
+def token_contract(cap):
     web3 = connect_to_json_rpc("test")
     compiled_contracts = load_contracts_json("merkle_drop")
-
+#      string memory name, string memory symbol, uint8 initDecimals, uint256 cap
     token_contract: Contract = deploy_compiled_contract(
         abi=compiled_contracts["DroppedToken"]["abi"],
         bytecode=compiled_contracts["DroppedToken"]["bytecode"],
@@ -71,18 +71,23 @@ def token_contract(premint_token_value):
             "Test Token",
             "TT",
             18,
-            web3.eth.accounts[0],
-            premint_token_value,
+            cap,
         ),
         web3=web3,
     )
+
+    print ("owner: ", token_contract.functions.owner().call())
+    new_owner = treasury_address = token_contract.functions.owner().call()
+
+    token_contract.functions.initialize(treasury_address, new_owner).transact()
+    token_contract.functions.allowTransferee(new_owner).transact()
 
     return token_contract
 
 
 @pytest.fixture()
 def unfunded_merkle_drop_contract(
-    premint_token_value, root_hash_for_tree_data, token_contract
+    root_hash_for_tree_data, token_contract
 ):
     web3 = connect_to_json_rpc("test")
     compiled_contracts = load_contracts_json("merkle_drop")
@@ -101,20 +106,23 @@ def unfunded_merkle_drop_contract(
         web3=web3,
     )
 
+    # allow merkle drop contract to transfer tokens
+    # token_contract.functions.allowTransferee(merkle_drop_contract.address).transact()
+
     return merkle_drop_contract
 
 
 @pytest.fixture()
 def funded_merkle_drop_contract(
-    premint_token_value, unfunded_merkle_drop_contract, token_contract
+    fund_merkle_drop_amount, unfunded_merkle_drop_contract, token_contract
 ):
 
     token_contract.functions.transfer(
-        unfunded_merkle_drop_contract.address, premint_token_value
+        unfunded_merkle_drop_contract.address, fund_merkle_drop_amount
     ).transact()
     assert (
         token_contract.functions.balanceOf(unfunded_merkle_drop_contract.address).call()
-        == premint_token_value
+        == fund_merkle_drop_amount
     )
 
     return unfunded_merkle_drop_contract
