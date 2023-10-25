@@ -17,7 +17,7 @@ from deploy_tools.deploy import build_transaction_options
 from eth_utils import encode_hex, is_checksum_address, to_canonical_address
 
 from .airdrop import get_balance, get_item, to_items
-from .deploy import deploy_merkle_drop
+from .deploy import deploy_merkle_drop_contract, deploy_dropped_token_contract
 from .load_csv import load_airdrop_file
 from .merkle_tree import build_tree, compute_merkle_root, create_proof
 from .status import get_merkle_drop_status
@@ -133,7 +133,7 @@ def proof(address: bytes, airdrop_file_name: str) -> None:
     type=int,
     required=True,
 )
-def deploy(
+def deploy_merkle_drop(
     keystore: str,
     jsonrpc: str,
     gas: int,
@@ -176,7 +176,7 @@ def deploy(
         airdrop_expires_at,
     )
 
-    merkle_drop = deploy_merkle_drop(
+    merkle_drop = deploy_merkle_drop_contract(
         web3=web3,
         transaction_options=transaction_options,
         private_key=private_key,
@@ -185,6 +185,99 @@ def deploy(
 
     click.echo(f"MerkleDrop address: {merkle_drop.address}")
     click.echo(f"Merkle root: {encode_hex(merkle_root)}")
+
+
+@main.command(short_help="Deploy the Token contract")
+@keystore_option
+@gas_option
+@gas_price_option
+@nonce_option
+@auto_nonce_option
+@jsonrpc_option
+@click.option(
+    "--name",
+    "name",
+    help='Name of the token',
+    type=str,
+    required=True,
+)
+@click.option(
+    "--symbol",
+    "symbol",
+    help="The token symbol",
+    type=str,
+    required=True,
+)
+@click.option(
+    "--decimals",
+    "decimals",
+    help="The token decimals",
+    type=int,
+    required=True,
+)
+@click.option(
+    "--cap",
+    "cap",
+    help="Max supply of token",
+    type=int,
+    required=True,
+)
+def deploy_token(
+    keystore: str,
+    jsonrpc: str,
+    gas: int,
+    gas_price: int,
+    nonce: int,
+    auto_nonce: bool,
+    name: str,
+    symbol: str,
+    decimals: str,
+    cap: int,
+) -> None:
+
+    if name is None:
+        raise click.BadParameter(
+            "Name should be specified with --name"
+        )
+
+    if symbol is None:
+        raise click.BadParameter(
+            "Symbol should be specified with --symbol"
+        )
+    if decimals is None:
+        raise click.BadParameter(
+            "Decimals should be specified with --decimals"
+        )
+    if cap is None:
+        raise click.BadParameter(
+            "Cap should be specified with --cap"
+        )
+
+    web3 = connect_to_json_rpc(jsonrpc)
+    private_key = retrieve_private_key(keystore)
+
+    nonce = get_nonce(
+        web3=web3, nonce=nonce, auto_nonce=auto_nonce, private_key=private_key
+    )
+    transaction_options = build_transaction_options(
+        gas=gas, gas_price=gas_price, nonce=nonce
+    )
+
+    constructor_args = (
+        name,
+        symbol,
+        decimals,
+        cap,
+    )
+
+    token = deploy_dropped_token_contract(
+        web3=web3,
+        transaction_options=transaction_options,
+        private_key=private_key,
+        constructor_args=constructor_args,
+    )
+
+    click.echo(f"Token address: {token.address}")
 
 
 @main.command(short_help="Show the current Status of the MerkleDrop contract")

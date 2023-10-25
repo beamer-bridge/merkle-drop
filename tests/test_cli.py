@@ -221,7 +221,7 @@ def test_not_existing_merkle_proof_cli(runner, airdrop_list_file):
 def test_deploy_cli(runner, airdrop_list_file):
     result = runner.invoke(
         main,
-        args=f"deploy --jsonrpc test --token-address {ZERO_ADDRESS} "
+        args=f"deploy-merkle-drop --jsonrpc test --token-address {ZERO_ADDRESS} "
         f"--airdrop-file {airdrop_list_file} --treasury-address {TREASURY_ADDRESS} --airdrop-expires-at 1234567890",
     )
 
@@ -232,7 +232,7 @@ def test_deploy_cli(runner, airdrop_list_file):
 def test_deploy_cli_with_date(runner, airdrop_list_file):
     result = runner.invoke(
         main,
-        args=f"deploy --jsonrpc test --token-address {ZERO_ADDRESS} "
+        args=f"deploy-merkle-drop --jsonrpc test --token-address {ZERO_ADDRESS} "
         f"--airdrop-file {airdrop_list_file} --treasury-address {TREASURY_ADDRESS} --airdrop-expires-at 1234567890",
     )
 

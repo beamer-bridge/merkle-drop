@@ -1,4 +1,4 @@
-from merkle_drop.deploy import deploy_merkle_drop
+from merkle_drop.deploy import deploy_merkle_drop_contract, deploy_dropped_token_contract
 
 
 def test_deploy(web3):
@@ -12,6 +12,26 @@ def test_deploy(web3):
         treasury_address,
         airdrop_expires_at,
     )
-    merkle_drop = deploy_merkle_drop(web3=web3, constructor_args=constructor_args)
+    merkle_drop = deploy_merkle_drop_contract(web3=web3, constructor_args=constructor_args)
 
     assert merkle_drop.functions.airdropExpiresAt().call() == airdrop_expires_at
+
+
+def test_deploy_token(web3):
+    name = "DroppedToken"
+    symbol ="DT"
+    decimals = 18
+    cap = 100_000_000 * 10 ** 18
+    constructor_args = (
+        name,
+        symbol,
+        decimals,
+        cap,
+    )
+
+    token = deploy_dropped_token_contract(web3=web3, constructor_args=constructor_args)
+
+    assert token.functions.name().call() ==  name
+    assert token.functions.symbol().call() == symbol
+    assert token.functions.decimals().call() == decimals
+    assert token.functions.cap().call() == cap
