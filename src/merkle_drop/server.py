@@ -76,7 +76,7 @@ def get_entitlement_for(address):
     return jsonify(
         {
             "address": to_checksum_address(address),
-            "tokens": tokens,
+            "tokens": str(tokens),
             "proof": [encode_hex(hash_) for hash_ in proof],
         }
     )
